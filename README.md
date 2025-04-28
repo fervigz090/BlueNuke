@@ -34,7 +34,7 @@
 
 1. Clona el repositorio:
 ```bash
-git clone https://github.com/tu_usuario/BlueNuke.git
+git clone https://github.com/fervigz090/BlueNuke.git
 cd BlueNuke
 ```
 
