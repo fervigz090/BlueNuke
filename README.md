@@ -47,6 +47,7 @@ go mod tidy
 sudo go run bluenuke.go
 ```
 4. Controles rápidos
+
 [m] → Mostrar menú de dispositivos detectados.
 
 [q] → Salir de BlueNuke.
