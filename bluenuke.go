@@ -209,7 +209,7 @@ func printBanner() {
   \(    )/      \(    )/       \(   )/    \( |_____|/    \(       )/      \(   )/    \(       )/    \( |_____|/ 
    '    '        '    '         '   '      '    )/        '       '        '   '      '       '      '    )/    
                                                 '                                                         '     
-				  Bluetooth Ethical Hacking Tool
+		  Bluetooth Ethical Hacking Tool
                   Developed by Ivan Fernandez Rodriguez
 `
 	fmt.Println(banner)
